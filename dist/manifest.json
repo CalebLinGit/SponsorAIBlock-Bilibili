@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "SponsorAIBlock Bilibili",
+  "version": "0.1.0",
+  "description": "AI-powered sponsor segment detection and skipping for Bilibili",
+  "default_locale": "zh_CN",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://www.bilibili.com/*",
+    "https://api.bilibili.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.bilibili.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "SponsorAIBlock Bilibili"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["inject.js", "chunks/*.js", "lib/toastify.min.js", "lib/toastify.min.css"],
+      "matches": ["https://www.bilibili.com/*"]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "appName": { "message": "SponsorAIBlock" },
+  "appDescription": { "message": "AI-powered sponsor ad skip for Bilibili" },
+  "configTab": { "message": "Config" },
+  "instructionsTab": { "message": "Guide" },
+  "basicConfig": { "message": "Basic Config" },
+  "aiConfig": { "message": "AI Config" },
+  "autoSkipAds": { "message": "Auto Skip Ads" },
+  "ignoreVideoLessThan5Minutes": { "message": "Ignore videos under 5 minutes" },
+  "aiModel": { "message": "AI Model" },
+  "apiKey": { "message": "API Key" },
+  "enterApiKey": { "message": "Enter your API key" },
+  "save": { "message": "Save" },
+  "saved": { "message": "Saved" },
+  "error": { "message": "Error" },
+  "refreshToApply": { "message": "Refresh page to apply" },
+  "howToUse": { "message": "How to Use" },
+  "sourceCode": { "message": "Source Code" },
+  "noApiKeyProvided": { "message": "No API key provided, please configure in settings" },
+  "aiNotInitialized": { "message": "AI not initialized, please configure API key" },
+  "aiServiceFailed": { "message": "Cannot connect to AI service, please check network" },
+  "notLoginYet": { "message": "Not logged in, please log in first" }
+}
