@@ -30,29 +30,26 @@ function buildSegmentFromChapter(hit: ChapterHit): AdSegment {
   };
 }
 
-export async function runRadar(videoDuration: number): Promise<RadarDecision> {
-  // Step 1: Run synchronous scans immediately
-  const chapterHits = scanChapters();
+export async function runRadar(videoDuration: number, viewPoints: any[] = []): Promise<RadarDecision> {
   const tagConflicts = inspectTags();
 
-  // Step 2: Determine chapter short-circuit decision before awaiting shadow DOM
+  // Step 1: Shadow DOM scan (async, up to 30s) — by the time it resolves the player DOM is settled
+  const shadowResult: GoodsLinkResult = await scanShadowDom();
+
+  // Step 2: Chapter scan — try API view_point first, fall back to DOM (now definitely rendered)
+  const chapterHits = scanChapters(viewPoints);
+
+  // Step 3: Short-circuit decision
   let shortCircuitSegments: AdSegment[] | undefined;
   let chapterShortCircuit = false;
 
   if (chapterHits.length > 0) {
     const coverage = calculateChapterCoverage(chapterHits, videoDuration);
     if (coverage <= CHAPTER_COVERAGE_THRESHOLD) {
-      // Hits found and coverage is reasonable — short-circuit with pre-built segments
       chapterShortCircuit = true;
       shortCircuitSegments = chapterHits.map(buildSegmentFromChapter);
     }
-    // If coverage > 60%: too much of the video is flagged; likely a false positive or
-    // the whole video is an ad — pass along as signals only, let AI decide
   }
-
-  // Step 3: Start shadow DOM scan (async, up to 30s)
-  // We still run it even on short-circuit to collect brand signals for the cache entry
-  const shadowResult: GoodsLinkResult = await scanShadowDom();
 
   // Step 4: Build signals
   const signals: RadarSignals = {

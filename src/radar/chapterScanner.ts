@@ -6,74 +6,44 @@ export interface ChapterHit {
 
 const AD_KEYWORDS = ['好东西', '福利', '老朋友', '恰饭'];
 
-function parseTime(value: string | undefined): number | null {
-  if (value === undefined || value === null || value === '') return null;
-  const n = parseFloat(value);
-  return isNaN(n) ? null : n;
-}
+export function scanChapters(viewPoints: any[]): ChapterHit[] {
+  // Primary: API view_point array from wbi/v2 response
+  if (Array.isArray(viewPoints) && viewPoints.length > 0) {
+    const hits = viewPoints
+      .filter(
+        (p: any) =>
+          typeof p?.content === 'string' &&
+          AD_KEYWORDS.some((kw) => p.content.includes(kw)) &&
+          Number.isFinite(p.from) &&
+          Number.isFinite(p.to) &&
+          p.to > p.from
+      )
+      .map((p: any) => ({ name: (p.content as string).trim(), startTime: p.from as number, endTime: p.to as number }));
+    if (hits.length > 0) return hits;
+  }
 
-/**
- * Parses a timestamp string like "0:30" or "1:23:45" into seconds.
- */
-function parseTimestampText(text: string): number | null {
-  const trimmed = text.trim();
-  const parts = trimmed.split(':').map((p) => parseInt(p, 10));
-  if (parts.some(isNaN)) return null;
-  if (parts.length === 2) return parts[0] * 60 + parts[1];
-  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  return null;
-}
-
-export function scanChapters(): ChapterHit[] {
-  const items = document.querySelectorAll<HTMLElement>('.video-sections-item');
+  // Fallback: DOM scan with the actual Bilibili player chapter selector
+  const items = document.querySelectorAll<HTMLElement>('.bpx-player-ctrl-viewpoint-menu-item');
   if (items.length === 0) return [];
 
   const hits: ChapterHit[] = [];
-
   items.forEach((item, index) => {
-    // Try to get chapter name from dedicated sub-element first
-    const nameEl = item.querySelector<HTMLElement>('.video-sections-item-name');
-    const name = (nameEl?.textContent ?? item.textContent ?? '').trim();
+    const nameEl = item.querySelector<HTMLElement>('.bpx-player-ctrl-viewpoint-menu-item-content');
+    const name = (nameEl?.textContent ?? '').trim();
+    if (!name || !AD_KEYWORDS.some((kw) => name.includes(kw))) return;
 
-    if (!name) return;
+    const startTime = parseFloat(item.dataset.time ?? '');
+    if (!Number.isFinite(startTime)) return;
 
-    const hasKeyword = AD_KEYWORDS.some((kw) => name.includes(kw));
-    if (!hasKeyword) return;
-
-    // Try dataset attributes first
-    let startTime = parseTime(item.dataset.startTime);
-    let endTime = parseTime(item.dataset.endTime);
-
-    // Fallback: look for timestamp text elements
-    if (startTime === null) {
-      const tsEl = item.querySelector<HTMLElement>('.video-sections-item-timestamp');
-      if (tsEl) {
-        startTime = parseTimestampText(tsEl.textContent ?? '');
-      }
-    }
-
-    // If we still don't have a start time, skip this item
-    if (startTime === null) return;
-
-    // If no end time, try the next sibling item's start time; otherwise use startTime + 30s as a rough estimate
-    if (endTime === null) {
-      const nextItem = items[index + 1] as HTMLElement | undefined;
-      if (nextItem) {
-        const nextStart = parseTime(nextItem.dataset.startTime);
-        if (nextStart !== null) {
-          endTime = nextStart;
-        }
-      }
-    }
-
-    if (endTime === null) {
-      // Last chapter — endTime unknown, use a sentinel value
-      endTime = startTime + 30;
-    }
+    // End time: next sibling's start time, or start + 30s sentinel for last item
+    const nextItem = items[index + 1] as HTMLElement | undefined;
+    const endTime = nextItem
+      ? parseFloat(nextItem.dataset.time ?? '')
+      : startTime + 30;
+    if (!Number.isFinite(endTime) || endTime <= startTime) return;
 
     hits.push({ name, startTime, endTime });
   });
-
   return hits;
 }
 

@@ -35,9 +35,9 @@ describe('buildPrompt', () => {
     expect(prompt).toContain(SAMPLE_SUBTITLE);
   });
 
-  it('shows "无雷达信号" placeholder when radar signals are empty', () => {
+  it('shows "无雷达赞助证据" placeholder when radar signals are empty', () => {
     const prompt = buildPrompt(SAMPLE_SUBTITLE, emptySignals(), EMPTY_METADATA);
-    expect(prompt).toContain('无雷达信号');
+    expect(prompt).toContain('无雷达赞助证据');
   });
 
   it('includes goods link signal with brand when hasGoodsLink is true', () => {
@@ -51,20 +51,21 @@ describe('buildPrompt', () => {
     expect(prompt).toContain('妙界');
   });
 
-  it('does NOT include goods link line when hasGoodsLink is false', () => {
+  it('does NOT include radar goods link signal when hasGoodsLink is false', () => {
     const prompt = buildPrompt(SAMPLE_SUBTITLE, emptySignals(), EMPTY_METADATA);
-    expect(prompt).not.toContain('置顶评论含商品链接');
+    // The radar signal line format includes brand name; only present when hasGoodsLink+brand both truthy
+    expect(prompt).not.toContain('置顶评论含商品链接（品牌词：');
   });
 
-  it('does NOT include goods link line when hasGoodsLink is true but goodsBrand is undefined', () => {
+  it('does NOT include radar goods link signal when hasGoodsLink is true but goodsBrand is undefined', () => {
     const signals: RadarSignals = {
       ...emptySignals(),
       hasGoodsLink: true,
       goodsBrand: undefined,
     };
-    // Per builder.ts: line only added when BOTH hasGoodsLink AND goodsBrand are truthy
+    // Per builder.ts: radar line only added when BOTH hasGoodsLink AND goodsBrand are truthy
     const prompt = buildPrompt(SAMPLE_SUBTITLE, signals, EMPTY_METADATA);
-    expect(prompt).not.toContain('置顶评论含商品链接');
+    expect(prompt).not.toContain('置顶评论含商品链接（品牌词：');
   });
 
   it('includes chapter hit names when chapterHits are provided', () => {
@@ -194,12 +195,20 @@ describe('buildPrompt', () => {
     expect(prompt).toMatchSnapshot();
   });
 
-  it('contains all four few-shot example headers', () => {
-    const prompt = buildPrompt(SAMPLE_SUBTITLE, emptySignals(), EMPTY_METADATA);
+  it('contains all five few-shot example headers for subtitle path', () => {
+    const prompt = buildPrompt(SAMPLE_SUBTITLE, emptySignals(), EMPTY_METADATA, 'subtitle');
     expect(prompt).toContain('【示例1 - Hard_Ad】');
     expect(prompt).toContain('【示例2 - Hard_Ad】');
     expect(prompt).toContain('【示例3 - Integrated_Ad】');
     expect(prompt).toContain('【示例4 - Integrated_Ad】');
+    expect(prompt).toContain('【示例5 - 非广告（探店）】');
+    expect(prompt).not.toContain('【示例6 - 弹幕广告警告】');
+  });
+
+  it('contains 示例5 and 示例6 for danmaku path', () => {
+    const prompt = buildPrompt(SAMPLE_SUBTITLE, emptySignals(), EMPTY_METADATA, 'danmaku');
+    expect(prompt).toContain('【示例5 - 非广告（探店）】');
+    expect(prompt).toContain('【示例6 - 弹幕广告警告】');
   });
 
   it('contains output format block', () => {
@@ -242,5 +251,36 @@ describe('buildPrompt', () => {
   it('snapshot: danmaku inputSource with minimal input', () => {
     const prompt = buildPrompt(SAMPLE_SUBTITLE, emptySignals(), EMPTY_METADATA, 'danmaku');
     expect(prompt).toMatchSnapshot();
+  });
+
+  // Integrated_Ad sponsorship evidence — branched by inputSource
+  it('subtitle prompt contains 字幕赞助证据 text and not 弹幕赞助证据 text', () => {
+    const prompt = buildPrompt(SAMPLE_SUBTITLE, emptySignals(), EMPTY_METADATA, 'subtitle');
+    expect(prompt).toContain('字幕场景下的商业赞助证据');
+    expect(prompt).not.toContain('弹幕场景下的商业赞助证据');
+  });
+
+  it('danmaku prompt contains 弹幕赞助证据 text and not 字幕赞助证据 text', () => {
+    const prompt = buildPrompt(SAMPLE_SUBTITLE, emptySignals(), EMPTY_METADATA, 'danmaku');
+    expect(prompt).toContain('弹幕场景下的商业赞助证据');
+    expect(prompt).not.toContain('字幕场景下的商业赞助证据');
+  });
+
+  // 探店/评测非广告 rule — shared across both paths
+  it('subtitle prompt contains 探店非广告 rule', () => {
+    const prompt = buildPrompt(SAMPLE_SUBTITLE, emptySignals(), EMPTY_METADATA, 'subtitle');
+    expect(prompt).toContain('评测/探店/Vlog 类内容不是广告');
+  });
+
+  it('danmaku prompt contains 探店非广告 rule', () => {
+    const prompt = buildPrompt(SAMPLE_SUBTITLE, emptySignals(), EMPTY_METADATA, 'danmaku');
+    expect(prompt).toContain('评测/探店/Vlog 类内容不是广告');
+  });
+
+  // Integrated_Ad evidence gate
+  it('Integrated_Ad rule requires commercial sponsorship evidence', () => {
+    const prompt = buildPrompt(SAMPLE_SUBTITLE, emptySignals(), EMPTY_METADATA, 'subtitle');
+    expect(prompt).toContain('有明确商业赞助证据');
+    expect(prompt).toContain('仅产品出现/被使用不足以判定为广告');
   });
 });

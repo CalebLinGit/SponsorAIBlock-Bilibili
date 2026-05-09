@@ -119,7 +119,8 @@ async function processVideoSubtitles(response: any, videoId: string): Promise<vo
   if (config.radarEnabled) {
     console.log('[SAI:RADAR] Running radar probes...');
     try {
-      const radarDecision = await runRadar(videoDuration ?? 0);
+      const viewPoints: any[] = response.data?.view_point ?? [];
+      const radarDecision = await runRadar(videoDuration ?? 0, viewPoints);
       radarSignals = radarDecision.signals;
       shortCircuitSegments = radarDecision.shortCircuitSegments;
 
