@@ -14,7 +14,6 @@ import {
 import { Tabs } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { useI18n } from '../hooks/useI18n';
 import { DEFAULT_CONFIG } from './config';
 
 interface ConfigForm {
@@ -23,10 +22,7 @@ interface ConfigForm {
 }
 
 const App: React.FC = () => {
-  const { t } = useI18n();
-
   // Basic config state
-  const [autoSkip, setAutoSkip] = useState<boolean>(DEFAULT_CONFIG.autoSkip);
   const [ignoreVideoLessThan5Minutes, setIgnoreVideoLessThan5Minutes] = useState<boolean>(
     DEFAULT_CONFIG.ignoreVideoLessThan5Minutes
   );
@@ -46,7 +42,6 @@ const App: React.FC = () => {
   useEffect(() => {
     const loadSettings = async () => {
       const result = await chrome.storage.local.get([
-        'autoSkip',
         'ignoreVideoLessThan5Minutes',
         'enableDanmakuFallback',
         'radarEnabled',
@@ -54,9 +49,6 @@ const App: React.FC = () => {
         'integratedAdAction',
         'confidenceThreshold',
       ]);
-
-      if (result.autoSkip !== undefined) setAutoSkip(result.autoSkip);
-      else await chrome.storage.local.set({ autoSkip: DEFAULT_CONFIG.autoSkip });
 
       if (result.ignoreVideoLessThan5Minutes !== undefined)
         setIgnoreVideoLessThan5Minutes(result.ignoreVideoLessThan5Minutes);
@@ -91,7 +83,7 @@ const App: React.FC = () => {
 
   const showSuccessNotification = (message: string) => {
     notifications.show({
-      title: t('saved'),
+      title: '保存成功',
       message,
       color: 'green',
       position: 'top-right',
@@ -100,49 +92,43 @@ const App: React.FC = () => {
 
   const showFailedNotification = (message: string) => {
     notifications.show({
-      title: t('error'),
+      title: '错误',
       message,
       color: 'red',
       position: 'top-right',
     });
   };
 
-  const updateAutoSkip = async (value: boolean) => {
-    setAutoSkip(value);
-    await chrome.storage.local.set({ autoSkip: value });
-    showSuccessNotification(t('refreshToApply'));
-  };
-
   const updateIgnoreVideoLessThan5Minutes = async (value: boolean) => {
     setIgnoreVideoLessThan5Minutes(value);
     await chrome.storage.local.set({ ignoreVideoLessThan5Minutes: value });
-    showSuccessNotification(t('refreshToApply'));
+    showSuccessNotification('刷新页面后生效');
   };
 
   const updateEnableDanmakuFallback = async (value: boolean) => {
     setEnableDanmakuFallback(value);
     await chrome.storage.local.set({ enableDanmakuFallback: value });
-    showSuccessNotification(t('refreshToApply'));
+    showSuccessNotification('刷新页面后生效');
   };
 
   const updateRadarEnabled = async (value: boolean) => {
     setRadarEnabled(value);
     await chrome.storage.local.set({ radarEnabled: value });
-    showSuccessNotification(t('refreshToApply'));
+    showSuccessNotification('刷新页面后生效');
   };
 
   const updateHardAdAction = async (value: string | null) => {
     if (!value) return;
     setHardAdAction(value);
     await chrome.storage.local.set({ hardAdAction: value });
-    showSuccessNotification(t('refreshToApply'));
+    showSuccessNotification('刷新页面后生效');
   };
 
   const updateIntegratedAdAction = async (value: string | null) => {
     if (!value) return;
     setIntegratedAdAction(value);
     await chrome.storage.local.set({ integratedAdAction: value });
-    showSuccessNotification(t('refreshToApply'));
+    showSuccessNotification('刷新页面后生效');
   };
 
   const updateConfidenceThreshold = async (value: string | number) => {
@@ -150,7 +136,7 @@ const App: React.FC = () => {
     if (isNaN(num)) return;
     setConfidenceThreshold(num);
     await chrome.storage.local.set({ confidenceThreshold: num });
-    showSuccessNotification(t('refreshToApply'));
+    showSuccessNotification('刷新页面后生效');
   };
 
   const form = useForm<ConfigForm>({
@@ -179,7 +165,7 @@ const App: React.FC = () => {
       apiKey: values.apiKey,
     });
     form.resetDirty();
-    showSuccessNotification(t('refreshToApply'));
+    showSuccessNotification('刷新页面后生效');
   };
 
   const switchStyles = {
@@ -191,24 +177,16 @@ const App: React.FC = () => {
   return (
     <Tabs defaultValue="config" styles={{ tabLabel: { fontSize: '13px' } }}>
       <Tabs.List>
-        <Tabs.Tab value="config">{t('configTab')}</Tabs.Tab>
-        <Tabs.Tab value="instructions">{t('instructionsTab')}</Tabs.Tab>
+        <Tabs.Tab value="config">配置</Tabs.Tab>
+        <Tabs.Tab value="instructions">教程</Tabs.Tab>
       </Tabs.List>
 
       <Tabs.Panel value="config">
         <div style={{ padding: '18px', color: 'inherit' }}>
           <Stack gap="sm">
-            <Divider size="xs" label={t('basicConfig')} labelPosition="center" />
+            <Divider size="xs" label="基本配置" labelPosition="center" />
             <Switch
-              label={t('autoSkipAds')}
-              labelPosition="left"
-              size="sm"
-              styles={switchStyles}
-              checked={autoSkip}
-              onChange={(e) => updateAutoSkip(e.currentTarget.checked)}
-            />
-            <Switch
-              label={t('ignoreVideoLessThan5Minutes')}
+              label="忽略小于 5 分钟的视频"
               labelPosition="left"
               size="sm"
               styles={switchStyles}
@@ -222,15 +200,15 @@ const App: React.FC = () => {
               <div>
                 <Divider
                   my="xs"
-                  label={t('aiConfig')}
+                  label="AI 配置"
                   labelPosition="center"
                   styles={{ root: { marginBlock: 0, marginBottom: '0px' } }}
                 />
                 <Select
                   {...form.getInputProps('aiModel')}
                   key={form.key('aiModel')}
-                  label={t('aiModel')}
-                  placeholder="Pick value"
+                  label="AI 模型"
+                  placeholder="选择模型"
                   maxDropdownHeight={100}
                   searchable
                   size="xs"
@@ -238,7 +216,6 @@ const App: React.FC = () => {
                     {
                       group: 'Gemini',
                       items: [
-                        { value: 'gemini-3.0-flash', label: 'gemini-3.0-flash' },
                         { value: 'gemini-2.5-pro', label: 'gemini-2.5-pro' },
                         { value: 'gemini-2.5-flash', label: 'gemini-2.5-flash' },
                       ],
@@ -246,15 +223,15 @@ const App: React.FC = () => {
                   ]}
                 />
                 <PasswordInput
-                  label={t('apiKey')}
-                  placeholder={t('enterApiKey')}
+                  label="API 密钥"
+                  placeholder="请输入您的 API 密钥"
                   {...form.getInputProps('apiKey')}
                   size="xs"
                 />
               </div>
               <Group justify="flex-end" mt="sm" gap="xs">
                 <Button type="submit" size="xs" disabled={!form.isDirty()}>
-                  {t('save')}
+                  保存
                 </Button>
               </Group>
             </Stack>
@@ -291,6 +268,7 @@ const App: React.FC = () => {
               data={[
                 { value: 'auto_skip', label: '自动跳过' },
                 { value: 'prompt', label: '提示用户' },
+                { value: 'ignore', label: '忽略' },
               ]}
             />
             <Select
@@ -320,27 +298,18 @@ const App: React.FC = () => {
 
       <Tabs.Panel value="instructions">
         <div style={{ padding: '18px' }}>
-          <Text size="sm" fw={600}>
-            {t('howToUse')}
-          </Text>
-          <List size="sm">
+          <Text size="sm" fw={600}>使用教程</Text>
+          <List size="sm" mt="xs">
             <List.Item>
-              <a href="https://github.com/hh54188/bilibili-ad-killer" target="_blank">
-                English Version
-              </a>
-            </List.Item>
-            <List.Item>
-              <a href="https://www.v2think.com/ad-killer" target="_blank">
-                中文教程
+              <a href="https://www.notion.so/SponsorAIBlock-35bc94e983a9800e9320eb021306061a" target="_blank">
+                中文使用教程
               </a>
             </List.Item>
           </List>
         </div>
         <div style={{ padding: '18px' }}>
-          <Text size="sm" fw={600}>
-            {t('sourceCode')}
-          </Text>
-          <List size="sm">
+          <Text size="sm" fw={600}>源代码</Text>
+          <List size="sm" mt="xs">
             <List.Item>
               <a href="https://github.com/hh54188/bilibili-ad-killer" target="_blank">
                 GitHub

@@ -1,10 +1,9 @@
 export interface UserConfig {
   apiKey: string;
   aiModel: string;
-  autoSkip: boolean;
   ignoreVideoLessThan5Minutes: boolean;
   radarEnabled: boolean;
-  hardAdAction: 'auto_skip' | 'prompt';
+  hardAdAction: 'auto_skip' | 'prompt' | 'ignore';
   integratedAdAction: 'auto_skip' | 'prompt' | 'ignore';
   confidenceThreshold: number;
   enableDanmakuFallback: boolean;
@@ -14,7 +13,6 @@ export interface UserConfig {
 export const DEFAULT_CONFIG: UserConfig = {
   apiKey: '',
   aiModel: 'gemini-2.5-flash',
-  autoSkip: true,
   ignoreVideoLessThan5Minutes: true,
   radarEnabled: true,
   hardAdAction: 'auto_skip',

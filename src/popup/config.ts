@@ -1,7 +1,6 @@
 export const DEFAULT_CONFIG = {
   apiKey: '',
   aiModel: 'gemini-2.5-flash',
-  autoSkip: true,
   ignoreVideoLessThan5Minutes: true,
   enableDanmakuFallback: true,
   radarEnabled: true,

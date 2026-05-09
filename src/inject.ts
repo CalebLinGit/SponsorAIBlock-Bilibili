@@ -11,17 +11,23 @@ import { config, initializeConfig, UserConfig } from './config';
 import type { AdSegment, CacheEntry, RadarSignals } from './storage/cache';
 import { runRadar, cleanupRadar, emptyRadarSignals } from './radar/index';
 
-interface CacheMap {
-  [bvid: string]: CacheEntry | null;
-}
-
 let geminiClient: GoogleGenAI | null = null;
-let localCacheMap: CacheMap | null = null;
 
 console.log('SAI: Inject script ready, signaling to content script');
 
 window.postMessage({ type: 'SAI_READY' }, '*');
-window.postMessage({ type: 'SAI_REQUEST_CACHE' }, '*');
+
+function requestCacheEntry(bvid: string): Promise<CacheEntry | null> {
+  return new Promise((resolve) => {
+    const handler = (event: MessageEvent) => {
+      if (event.source !== window || event.data.type !== 'SAI_SEND_CACHE') return;
+      window.removeEventListener('message', handler);
+      resolve((event.data.data as Record<string, CacheEntry>)?.[bvid] ?? null);
+    };
+    window.addEventListener('message', handler);
+    window.postMessage({ type: 'SAI_REQUEST_CACHE', bvid }, '*');
+  });
+}
 
 const webResponseCache: { [videoBvid: string]: object } = {};
 let currentVideoId: string | null = null;
@@ -41,12 +47,6 @@ window.addEventListener('message', async (event) => {
       }
     };
     notifyWhenBodyReady();
-    return;
-  }
-
-  if (event.data.type === 'SAI_SEND_CACHE') {
-    console.log('SAI: Received cache from content.ts', event.data);
-    localCacheMap = event.data.data || {};
     return;
   }
 
@@ -97,18 +97,17 @@ async function processVideoSubtitles(response: any, videoId: string): Promise<vo
   const videoBvid = response.data.bvid;
 
   // 1. Cache lookup
-  if (localCacheMap && videoId && localCacheMap[videoId]) {
-    const cached = localCacheMap[videoId];
-    if (cached && cached.segments.length > 0) {
-      console.log('[SAI:CACHE] Hit for', videoId, '— segments:', cached.segments);
+  const cached = await requestCacheEntry(videoBvid);
+  if (cached) {
+    if (cached.segments.length > 0) {
+      console.log('[SAI:CACHE] Hit for', videoBvid, '— segments:', cached.segments);
       initializeAdBar(cached.segments, config, cached.input_source ?? 'subtitle');
-      return;
     } else {
-      console.log('[SAI:CACHE] Hit but no segments — clean video:', videoId);
-      return;
+      console.log('[SAI:CACHE] Hit but no segments — clean video:', videoBvid);
     }
+    return;
   }
-  console.log('[SAI:CACHE] Miss for', videoId);
+  console.log('[SAI:CACHE] Miss for', videoBvid);
 
   // @ts-ignore
   const videoDuration: number | undefined = window.__INITIAL_STATE__?.videoData?.duration;

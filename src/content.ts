@@ -4,7 +4,6 @@ import type { AdSegment, RadarSignals } from './storage/cache';
 const DEFAULTS = {
   apiKey: '',
   aiModel: 'gemini-2.5-flash',
-  autoSkip: true,
   ignoreVideoLessThan5Minutes: true,
   enableDanmakuFallback: true,
   danmakuWindowSec: 5,
@@ -43,7 +42,6 @@ injectScript.onload = () => {
   const result = await chrome.storage.local.get([
     'apiKey',
     'aiModel',
-    'autoSkip',
     'ignoreVideoLessThan5Minutes',
     'enableDanmakuFallback',
     'danmakuWindowSec',
@@ -55,8 +53,6 @@ injectScript.onload = () => {
 
   const apiKey = result.apiKey || DEFAULTS.apiKey;
   const aiModel = result.aiModel || DEFAULTS.aiModel;
-  const autoSkip =
-    result.autoSkip !== undefined ? result.autoSkip : DEFAULTS.autoSkip;
   const ignoreVideoLessThan5Minutes =
     result.ignoreVideoLessThan5Minutes !== undefined
       ? result.ignoreVideoLessThan5Minutes
@@ -79,7 +75,6 @@ injectScript.onload = () => {
   const resolvedConfig = {
     apiKey,
     aiModel,
-    autoSkip,
     ignoreVideoLessThan5Minutes,
     enableDanmakuFallback,
     danmakuWindowSec,

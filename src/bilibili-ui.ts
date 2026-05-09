@@ -366,14 +366,12 @@ function setupAutoSkipForSegment(
   userConfig: UserConfig
 ): void {
   const { startTime: adStartSeconds, endTime: adEndSeconds, ad_type, confidence } = segment;
-  const autoSkip = userConfig.autoSkip;
 
   const shouldAutoSkip =
-    autoSkip &&
-    ((ad_type === 'Hard_Ad' &&
+    (ad_type === 'Hard_Ad' &&
       confidence >= userConfig.confidenceThreshold &&
       userConfig.hardAdAction === 'auto_skip') ||
-      (ad_type === 'Integrated_Ad' && userConfig.integratedAdAction === 'auto_skip'));
+    (ad_type === 'Integrated_Ad' && userConfig.integratedAdAction === 'auto_skip');
 
   const shouldPrompt =
     !shouldAutoSkip &&
