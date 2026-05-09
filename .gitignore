@@ -8,14 +8,7 @@
   .claude/
   .claude-*
   .cursor/
-  EOF
-
-  git add .
-  git commit -m "init: SponsorAIBlock Bilibili extension
-
-  Radar-First architecture (chapter/shadow-DOM/tag probes) gating Gemini AI,
-  with Hard_Ad/Integrated_Ad classification and configurable skip behavior.
-  "
+  .history/
 
 
 
