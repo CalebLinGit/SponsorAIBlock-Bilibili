@@ -12,7 +12,8 @@ export interface VideoMetadata {
 export function buildPrompt(
   subtitleStr: string,
   radarSignals: RadarSignals,
-  metadata: VideoMetadata
+  metadata: VideoMetadata,
+  inputSource: 'subtitle' | 'danmaku' = 'subtitle'
 ): string {
   const blocks: string[] = [];
 
@@ -108,8 +109,13 @@ export function buildPrompt(
     blocks.push(...metadataLines);
   }
 
-  // Block 5: Subtitle
-  blocks.push('【字幕内容】');
+  // Block 5: Input content (subtitle or danmaku)
+  if (inputSource === 'danmaku') {
+    blocks.push('【弹幕内容】');
+    blocks.push('以下文本为观众弹幕汇总（每段为该时间窗内的弹幕拼接），请基于弹幕语义识别广告区间。注意弹幕通常滞后于实际广告 1-3 秒。');
+  } else {
+    blocks.push('【字幕内容】');
+  }
   blocks.push('------');
   blocks.push(subtitleStr);
   blocks.push('------');

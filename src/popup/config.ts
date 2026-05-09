@@ -3,6 +3,7 @@ export const DEFAULT_CONFIG = {
   aiModel: 'gemini-2.5-flash',
   autoSkip: true,
   ignoreVideoLessThan5Minutes: true,
+  enableDanmakuFallback: true,
   radarEnabled: true,
   hardAdAction: 'auto_skip' as const,
   integratedAdAction: 'prompt' as const,

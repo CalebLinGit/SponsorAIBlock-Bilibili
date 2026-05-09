@@ -215,4 +215,32 @@ describe('buildPrompt', () => {
     expect(prompt).toContain('【字幕内容】');
     expect(prompt).toContain('------');
   });
+
+  // inputSource='danmaku' tests
+  it('uses 【弹幕内容】 header when inputSource is danmaku', () => {
+    const prompt = buildPrompt(SAMPLE_SUBTITLE, emptySignals(), EMPTY_METADATA, 'danmaku');
+    expect(prompt).toContain('【弹幕内容】');
+    expect(prompt).not.toContain('【字幕内容】');
+  });
+
+  it('includes danmaku lag notice when inputSource is danmaku', () => {
+    const prompt = buildPrompt(SAMPLE_SUBTITLE, emptySignals(), EMPTY_METADATA, 'danmaku');
+    expect(prompt).toContain('弹幕通常滞后于实际广告 1-3 秒');
+  });
+
+  it('uses 【字幕内容】 header when inputSource is subtitle (default)', () => {
+    const prompt = buildPrompt(SAMPLE_SUBTITLE, emptySignals(), EMPTY_METADATA, 'subtitle');
+    expect(prompt).toContain('【字幕内容】');
+    expect(prompt).not.toContain('【弹幕内容】');
+  });
+
+  it('uses 【字幕内容】 header when inputSource is omitted', () => {
+    const prompt = buildPrompt(SAMPLE_SUBTITLE, emptySignals(), EMPTY_METADATA);
+    expect(prompt).toContain('【字幕内容】');
+  });
+
+  it('snapshot: danmaku inputSource with minimal input', () => {
+    const prompt = buildPrompt(SAMPLE_SUBTITLE, emptySignals(), EMPTY_METADATA, 'danmaku');
+    expect(prompt).toMatchSnapshot();
+  });
 });

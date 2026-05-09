@@ -6,6 +6,8 @@ const DEFAULTS = {
   aiModel: 'gemini-2.5-flash',
   autoSkip: true,
   ignoreVideoLessThan5Minutes: true,
+  enableDanmakuFallback: true,
+  danmakuWindowSec: 5,
   radarEnabled: true,
   hardAdAction: 'auto_skip' as const,
   integratedAdAction: 'prompt' as const,
@@ -43,6 +45,8 @@ injectScript.onload = () => {
     'aiModel',
     'autoSkip',
     'ignoreVideoLessThan5Minutes',
+    'enableDanmakuFallback',
+    'danmakuWindowSec',
     'radarEnabled',
     'hardAdAction',
     'integratedAdAction',
@@ -65,12 +69,20 @@ injectScript.onload = () => {
     result.confidenceThreshold !== undefined
       ? result.confidenceThreshold
       : DEFAULTS.confidenceThreshold;
+  const enableDanmakuFallback =
+    result.enableDanmakuFallback !== undefined
+      ? result.enableDanmakuFallback
+      : DEFAULTS.enableDanmakuFallback;
+  const danmakuWindowSec =
+    result.danmakuWindowSec !== undefined ? result.danmakuWindowSec : DEFAULTS.danmakuWindowSec;
 
   const resolvedConfig = {
     apiKey,
     aiModel,
     autoSkip,
     ignoreVideoLessThan5Minutes,
+    enableDanmakuFallback,
+    danmakuWindowSec,
     radarEnabled,
     hardAdAction,
     integratedAdAction,
@@ -122,11 +134,12 @@ injectScript.onload = () => {
 
     if (event.data.type === 'SAI_SAVE_RESULT') {
       console.log('SAI: Saving result to cache', event.data);
-      const { bvid, segments, source, radarSignals } = event.data.data as {
+      const { bvid, segments, source, radarSignals, inputSource } = event.data.data as {
         bvid: string;
         segments: AdSegment[];
         source: 'radar' | 'ai';
         radarSignals: RadarSignals;
+        inputSource?: 'subtitle' | 'danmaku';
       };
 
       if (!bvid) {
@@ -141,9 +154,23 @@ injectScript.onload = () => {
         ad_type: adType,
         radar_signals: radarSignals || { hasGoodsLink: false, chapterHits: [], tagConflicts: [] },
         source,
+        input_source: inputSource ?? 'subtitle',
       });
 
       await cleanOldEntries();
+    }
+
+    if (event.data.type === 'SAI_REQUEST_DANMAKU_XML') {
+      const { cid } = event.data;
+      try {
+        const resp = await fetch(`https://comment.bilibili.com/${cid}.xml`, { credentials: 'include' });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const xmlText = await resp.text();
+        window.postMessage({ type: 'SAI_DANMAKU_XML_RESULT', xmlText, cid }, '*');
+      } catch (err) {
+        console.error('SAI: danmaku XML fetch failed:', err);
+        window.postMessage({ type: 'SAI_DANMAKU_XML_RESULT', xmlText: null, cid }, '*');
+      }
     }
 
     if (event.data.type === 'SAI_REQUEST_RADAR_SIGNALS') {

@@ -3,11 +3,12 @@ export interface UserConfig {
   aiModel: string;
   autoSkip: boolean;
   ignoreVideoLessThan5Minutes: boolean;
-  // New fields
   radarEnabled: boolean;
   hardAdAction: 'auto_skip' | 'prompt';
   integratedAdAction: 'auto_skip' | 'prompt' | 'ignore';
   confidenceThreshold: number;
+  enableDanmakuFallback: boolean;
+  danmakuWindowSec: number;
 }
 
 export const DEFAULT_CONFIG: UserConfig = {
@@ -19,6 +20,8 @@ export const DEFAULT_CONFIG: UserConfig = {
   hardAdAction: 'auto_skip',
   integratedAdAction: 'prompt',
   confidenceThreshold: 0.6,
+  enableDanmakuFallback: true,
+  danmakuWindowSec: 5,
 };
 
 export let config: UserConfig = DEFAULT_CONFIG;

@@ -30,6 +30,9 @@ const App: React.FC = () => {
   const [ignoreVideoLessThan5Minutes, setIgnoreVideoLessThan5Minutes] = useState<boolean>(
     DEFAULT_CONFIG.ignoreVideoLessThan5Minutes
   );
+  // Danmaku fallback config state
+  const [enableDanmakuFallback, setEnableDanmakuFallback] = useState<boolean>(DEFAULT_CONFIG.enableDanmakuFallback);
+
   // Radar config state
   const [radarEnabled, setRadarEnabled] = useState<boolean>(DEFAULT_CONFIG.radarEnabled);
   const [hardAdAction, setHardAdAction] = useState<string>(DEFAULT_CONFIG.hardAdAction);
@@ -45,6 +48,7 @@ const App: React.FC = () => {
       const result = await chrome.storage.local.get([
         'autoSkip',
         'ignoreVideoLessThan5Minutes',
+        'enableDanmakuFallback',
         'radarEnabled',
         'hardAdAction',
         'integratedAdAction',
@@ -60,6 +64,9 @@ const App: React.FC = () => {
         await chrome.storage.local.set({
           ignoreVideoLessThan5Minutes: DEFAULT_CONFIG.ignoreVideoLessThan5Minutes,
         });
+
+      if (result.enableDanmakuFallback !== undefined) setEnableDanmakuFallback(result.enableDanmakuFallback);
+      else await chrome.storage.local.set({ enableDanmakuFallback: DEFAULT_CONFIG.enableDanmakuFallback });
 
       if (result.radarEnabled !== undefined) setRadarEnabled(result.radarEnabled);
       else await chrome.storage.local.set({ radarEnabled: DEFAULT_CONFIG.radarEnabled });
@@ -109,6 +116,12 @@ const App: React.FC = () => {
   const updateIgnoreVideoLessThan5Minutes = async (value: boolean) => {
     setIgnoreVideoLessThan5Minutes(value);
     await chrome.storage.local.set({ ignoreVideoLessThan5Minutes: value });
+    showSuccessNotification(t('refreshToApply'));
+  };
+
+  const updateEnableDanmakuFallback = async (value: boolean) => {
+    setEnableDanmakuFallback(value);
+    await chrome.storage.local.set({ enableDanmakuFallback: value });
     showSuccessNotification(t('refreshToApply'));
   };
 
@@ -246,6 +259,19 @@ const App: React.FC = () => {
               </Group>
             </Stack>
           </form>
+
+          <Stack gap="sm" mt="xs">
+            <Divider size="xs" label="弹幕兜底" labelPosition="center" />
+            <Switch
+              label="无字幕时使用弹幕兜底"
+              labelPosition="left"
+              size="sm"
+              styles={switchStyles}
+              checked={enableDanmakuFallback}
+              onChange={(e) => updateEnableDanmakuFallback(e.currentTarget.checked)}
+              title="字幕缺失且雷达命中时，额外拉取弹幕 API 作为 AI 输入，可能略微增加首次识别耗时"
+            />
+          </Stack>
 
           <Stack gap="sm" mt="xs">
             <Divider size="xs" label="雷达检测" labelPosition="center" />

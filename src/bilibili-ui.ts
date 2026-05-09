@@ -2,6 +2,7 @@ import { skipAnimationClass, aboutToSkipAdStyle, initializeAdBarStyle, thinkingS
 import { config } from './config';
 import type { AdSegment } from './storage/cache';
 import type { UserConfig } from './config';
+import { showToast } from './toast';
 
 export const progressWrapClassSelector = '.bpx-player-progress-schedule';
 export const skipAdBarClass = 'sai-ad-bar';
@@ -167,7 +168,8 @@ function createIndividualAdBar(
   adStartSeconds: number,
   adEndSeconds: number,
   videoDuration: number,
-  colorClass: string
+  colorClass: string,
+  labelSuffix: string = ''
 ): void {
   const progressBarWidth = progressWrap.offsetWidth;
 
@@ -186,6 +188,9 @@ function createIndividualAdBar(
   const adBar = document.createElement('div');
   adBar.className = `${skipAdBarClass} ${colorClass}`;
   adBar.style.cssText = initializeAdBarStyle(left, width);
+  if (labelSuffix) {
+    adBar.title = labelSuffix.trim();
+  }
 
   const parentStyle = window.getComputedStyle(progressWrap);
   if (parentStyle.position === 'static') {
@@ -193,10 +198,10 @@ function createIndividualAdBar(
   }
 
   progressWrap.appendChild(adBar);
-  console.log(`SAI UI: Ad bar created: ${adStartSeconds}s - ${adEndSeconds}s (${left.toFixed(2)}px, ${width.toFixed(2)}px) [${colorClass}]`);
+  console.log(`SAI UI: Ad bar created: ${adStartSeconds}s - ${adEndSeconds}s (${left.toFixed(2)}px, ${width.toFixed(2)}px) [${colorClass}${labelSuffix}]`);
 }
 
-function createAdBar(adStartSeconds: number, adEndSeconds: number, colorClass: string): void {
+function createAdBar(adStartSeconds: number, adEndSeconds: number, colorClass: string, labelSuffix: string = ''): void {
   const progressWraps = Array.from(document.querySelectorAll(progressWrapClassSelector)) as HTMLElement[];
 
   if (!progressWraps?.length) {
@@ -211,7 +216,7 @@ function createAdBar(adStartSeconds: number, adEndSeconds: number, colorClass: s
   }
 
   for (const progressWrap of progressWraps) {
-    createIndividualAdBar(progressWrap, adStartSeconds, adEndSeconds, video.duration, colorClass);
+    createIndividualAdBar(progressWrap, adStartSeconds, adEndSeconds, video.duration, colorClass, labelSuffix);
   }
 }
 
@@ -449,12 +454,20 @@ function setupAutoSkipForSegment(
   console.log(`SAI UI: Skip handler set up for segment ${adStartSeconds}s-${adEndSeconds}s [${ad_type}, shouldAutoSkip=${shouldAutoSkip}]`);
 }
 
-export function initializeAdBar(segments: AdSegment[], userConfig: UserConfig): void {
+export function initializeAdBar(
+  segments: AdSegment[],
+  userConfig: UserConfig,
+  inputSource: 'subtitle' | 'danmaku' = 'subtitle'
+): void {
   injectSkipAnimationStyles();
 
   if (!segments || segments.length === 0) {
     console.log('SAI UI: No segments to display');
     return;
+  }
+
+  if (inputSource === 'danmaku') {
+    showToast('基于弹幕识别（精度可能略低于字幕）');
   }
 
   const video = document.querySelector('video') as HTMLVideoElement;
@@ -486,7 +499,8 @@ export function initializeAdBar(segments: AdSegment[], userConfig: UserConfig): 
     for (const segment of segments) {
       const colorClass =
         segment.ad_type === 'Hard_Ad' ? 'sai-ad-bar-hard' : 'sai-ad-bar-integrated';
-      createAdBar(segment.startTime, segment.endTime, colorClass);
+      const danmakuSuffix = inputSource === 'danmaku' ? ' 💬' : '';
+      createAdBar(segment.startTime, segment.endTime, colorClass, danmakuSuffix);
       setupAdBarResizeHandlers(segment.startTime, segment.endTime);
       setupAutoSkipForSegment(video, segment, userConfig);
     }

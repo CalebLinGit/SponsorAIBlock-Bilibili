@@ -6,6 +6,7 @@ import { showToast } from './toast';
 import { fetchSubtitleString } from './subtitleFetcher';
 import { identifyAdSegments, checkGeminiConnectivity } from './ai';
 import { buildPrompt } from './prompt/builder';
+import { getDanmakuAsPseudoSubtitle } from './danmaku/index';
 import { config, initializeConfig, UserConfig } from './config';
 import type { AdSegment, CacheEntry, RadarSignals } from './storage/cache';
 import { runRadar, cleanupRadar, emptyRadarSignals } from './radar/index';
@@ -64,6 +65,26 @@ window.addEventListener('message', async (event) => {
   }
 });
 
+// ---- danmaku XML proxy ----
+
+function requestDanmakuXml(cid: number): Promise<string | null> {
+  return new Promise((resolve) => {
+    const handler = (e: MessageEvent) => {
+      if (e.source !== window) return;
+      if (e.data.type === 'SAI_DANMAKU_XML_RESULT' && e.data.cid === cid) {
+        window.removeEventListener('message', handler);
+        resolve(e.data.xmlText);
+      }
+    };
+    window.addEventListener('message', handler);
+    window.postMessage({ type: 'SAI_REQUEST_DANMAKU_XML', cid }, '*');
+    setTimeout(() => {
+      window.removeEventListener('message', handler);
+      resolve(null);
+    }, 10000);
+  });
+}
+
 // ---- core processing ----
 
 async function processVideoSubtitles(response: any, videoId: string): Promise<void> {
@@ -80,7 +101,7 @@ async function processVideoSubtitles(response: any, videoId: string): Promise<vo
     const cached = localCacheMap[videoId];
     if (cached && cached.segments.length > 0) {
       console.log('[SAI:CACHE] Hit for', videoId, '— segments:', cached.segments);
-      initializeAdBar(cached.segments, config);
+      initializeAdBar(cached.segments, config, cached.input_source ?? 'subtitle');
       return;
     } else {
       console.log('[SAI:CACHE] Hit but no segments — clean video:', videoId);
@@ -114,9 +135,9 @@ async function processVideoSubtitles(response: any, videoId: string): Promise<vo
         console.log('[SAI:SHORTCIRCUIT] Radar short-circuit fired — skipping AI. Segments:', shortCircuitSegments);
         window.postMessage({
           type: 'SAI_SAVE_RESULT',
-          data: { bvid: videoBvid, segments: shortCircuitSegments, source: 'radar', radarSignals },
+          data: { bvid: videoBvid, segments: shortCircuitSegments, source: 'radar', radarSignals, inputSource: 'subtitle' as const },
         }, '*');
-        initializeAdBar(shortCircuitSegments, config);
+        initializeAdBar(shortCircuitSegments, config, 'subtitle');
         return;
       } else {
         console.log('[SAI:RADAR] No short-circuit — proceeding to subtitle fetch');
@@ -128,13 +149,44 @@ async function processVideoSubtitles(response: any, videoId: string): Promise<vo
     console.log('[SAI:RADAR] Radar disabled — skipping');
   }
 
-  // 3. Fetch subtitles (needed for AI)
+  // 3. Fetch subtitles; if absent, try danmaku fallback when radar is positive
   const subtitleStr = await fetchSubtitleString(response);
+  let inputSource: 'subtitle' | 'danmaku' = 'subtitle';
+  let textStr: string | null = subtitleStr;
+
   if (!subtitleStr) {
-    console.log('[SAI] No subtitles available for this video, passing through');
-    addAnimation(warningAnimationClass);
-    setTimeout(() => removeAnimation(), 3000);
-    return;
+    const radarPositive = radarSignals.hasGoodsLink || radarSignals.chapterHits.length > 0;
+
+    if (config.enableDanmakuFallback && radarPositive) {
+      // @ts-ignore
+      const cid: number | undefined = window.__INITIAL_STATE__?.videoData?.cid;
+
+      if (cid) {
+        console.log('[SAI:DANMAKU] No subtitles, radar positive — requesting XML for cid', cid);
+        try {
+          addAnimation(thinkingAnimationClass);
+          const xmlText = await requestDanmakuXml(cid);
+          removeAnimation();
+          if (!xmlText) throw new Error('XML fetch failed or returned null');
+          textStr = getDanmakuAsPseudoSubtitle(xmlText, config.danmakuWindowSec);
+          inputSource = 'danmaku';
+          console.log('[SAI:DANMAKU] Danmaku pseudo-subtitle length:', textStr?.length);
+        } catch (err) {
+          removeAnimation();
+          console.error('[SAI:DANMAKU] Failed to fetch danmaku:', err);
+          textStr = null;
+        }
+      } else {
+        console.log('[SAI:DANMAKU] cid not available, cannot fetch danmaku');
+      }
+    }
+
+    if (!textStr) {
+      console.log('[SAI] No subtitles and no danmaku fallback — passing through');
+      addAnimation(warningAnimationClass);
+      setTimeout(() => removeAnimation(), 3000);
+      return;
+    }
   }
 
   // 4. Run AI
@@ -153,13 +205,13 @@ async function processVideoSubtitles(response: any, videoId: string): Promise<vo
   // @ts-ignore
   const tname: string | undefined = window.__INITIAL_STATE__?.videoData?.tname;
 
-  const prompt = buildPrompt(subtitleStr, radarSignals, {
+  const prompt = buildPrompt(textStr!, radarSignals, {
     title: videoTitle,
     description: videoDescription,
     tname,
-  });
+  }, inputSource);
 
-  console.log('[SAI:AI] Calling', config.aiModel, '— subtitle length:', subtitleStr.length, 'chars');
+  console.log('[SAI:AI] Calling', config.aiModel, `— ${inputSource} length:`, textStr!.length, 'chars');
 
   let segments: AdSegment[] = [];
   try {
@@ -176,12 +228,12 @@ async function processVideoSubtitles(response: any, videoId: string): Promise<vo
 
   window.postMessage({
     type: 'SAI_SAVE_RESULT',
-    data: { bvid: videoBvid, segments, source: 'ai', radarSignals },
+    data: { bvid: videoBvid, segments, source: 'ai', radarSignals, inputSource },
   }, '*');
 
   if (segments.length > 0) {
     console.log('[SAI:UI] Initializing ad bar with', segments.length, 'segment(s)');
-    initializeAdBar(segments, config);
+    initializeAdBar(segments, config, inputSource);
   } else {
     console.log('[SAI:UI] No ads detected — clean video');
   }
